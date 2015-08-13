@@ -5,4 +5,4 @@ In traditional nginx, a subrequest is generated for each fragment, and page file
 
 There are two part in this server, one is page server, the other is fragment server. Client send request to page server, page server fetches fragments from fragment server, the complete page is returned after assembling.
 
-The fragment server is modified by concat module from alibaba(https://github.com/alibaba/nginx-http-concat)
+The fragment server is modified by concat module from alibaba(https://github.com/alibaba/nginx-http-concat).
