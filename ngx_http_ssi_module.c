@@ -1,21 +1,11 @@
-
-/*
- * Copyright (C) Igor Sysoev
- * Copyright (C) Nginx, Inc.
- */
-
-
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
 
 #define NGX_HTTP_SSI_ERROR          1
-
 #define NGX_HTTP_SSI_DATE_LEN       2048
-
 #define NGX_HTTP_SSI_ADD_PREFIX     1
 #define NGX_HTTP_SSI_ADD_ZERO       2
-
 
 typedef struct {
     ngx_flag_t    enable;
@@ -35,20 +25,17 @@ typedef struct {
 	ngx_str_t	  router_default;
 } ngx_http_ssi_loc_conf_t;
 
-
 typedef struct {
     ngx_str_t     name;
     ngx_uint_t    key;
     ngx_str_t     value;
 } ngx_http_ssi_var_t;
 
-
 typedef struct {
     ngx_str_t     name;
     ngx_chain_t  *bufs;
     ngx_uint_t    count;
 } ngx_http_ssi_block_t;
-
 
 typedef enum {
     ssi_start_state = 0,
@@ -72,7 +59,6 @@ typedef enum {
     ssi_error_end0_state,
     ssi_error_end1_state
 } ngx_http_ssi_state_e;
-
 
 static ngx_int_t ngx_http_ssi_output(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ctx);
@@ -206,8 +192,6 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
       ngx_null_command
 };
 
-
-
 static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
     ngx_http_ssi_preconfiguration,         /* preconfiguration */
     ngx_http_ssi_filter_init,              /* postconfiguration */
@@ -221,7 +205,6 @@ static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
     ngx_http_ssi_create_loc_conf,          /* create location configuration */
     ngx_http_ssi_merge_loc_conf            /* merge location configuration */
 };
-
 
 ngx_module_t  ngx_http_ssi_filter_module = {
     NGX_MODULE_V1,
@@ -238,17 +221,14 @@ ngx_module_t  ngx_http_ssi_filter_module = {
     NGX_MODULE_V1_PADDING
 };
 
-
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
-
 
 static u_char ngx_http_ssi_string[] = "<!--";
 
 static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
 static ngx_str_t ngx_http_ssi_timefmt = ngx_string("%A, %d-%b-%Y %H:%M:%S %Z");
 static ngx_str_t ngx_http_ssi_null_string = ngx_null_string;
-
 
 #define  NGX_HTTP_SSI_INCLUDE_VIRTUAL  0
 #define  NGX_HTTP_SSI_INCLUDE_FILE     1
@@ -270,7 +250,6 @@ static ngx_str_t ngx_http_ssi_null_string = ngx_null_string;
 
 #define  NGX_HTTP_SSI_BLOCK_NAME       0
 
-
 static ngx_http_ssi_param_t  ngx_http_ssi_include_params[] = {
     { ngx_string("virtual"), NGX_HTTP_SSI_INCLUDE_VIRTUAL, 0, 0 },
     { ngx_string("file"), NGX_HTTP_SSI_INCLUDE_FILE, 0, 0 },
@@ -280,7 +259,6 @@ static ngx_http_ssi_param_t  ngx_http_ssi_include_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
 
-
 static ngx_http_ssi_param_t  ngx_http_ssi_echo_params[] = {
     { ngx_string("var"), NGX_HTTP_SSI_ECHO_VAR, 1, 0 },
     { ngx_string("default"), NGX_HTTP_SSI_ECHO_DEFAULT, 0, 0 },
@@ -288,20 +266,17 @@ static ngx_http_ssi_param_t  ngx_http_ssi_echo_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
 
-
 static ngx_http_ssi_param_t  ngx_http_ssi_config_params[] = {
     { ngx_string("errmsg"), NGX_HTTP_SSI_CONFIG_ERRMSG, 0, 0 },
     { ngx_string("timefmt"), NGX_HTTP_SSI_CONFIG_TIMEFMT, 0, 0 },
     { ngx_null_string, 0, 0, 0 }
 };
 
-
 static ngx_http_ssi_param_t  ngx_http_ssi_set_params[] = {
     { ngx_string("var"), NGX_HTTP_SSI_SET_VAR, 1, 0 },
     { ngx_string("value"), NGX_HTTP_SSI_SET_VALUE, 1, 0 },
     { ngx_null_string, 0, 0, 0 }
 };
-
 
 static ngx_http_ssi_param_t  ngx_http_ssi_if_params[] = {
     { ngx_string("expr"), NGX_HTTP_SSI_IF_EXPR, 1, 0 },
@@ -314,11 +289,9 @@ static ngx_http_ssi_param_t  ngx_http_ssi_block_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
 
-
 static ngx_http_ssi_param_t  ngx_http_ssi_no_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
-
 
 static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
     { ngx_string("include"), ngx_http_ssi_include,
@@ -344,7 +317,6 @@ static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
-
 
 static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 
@@ -2435,7 +2407,6 @@ ngx_http_ssi_regex_match(ngx_http_request_t *r, ngx_str_t *pattern,
 #endif
 }
 
-
 static ngx_int_t
 ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
@@ -2942,7 +2913,6 @@ ngx_http_ssi_config(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     return NGX_OK;
 }
-
 
 static ngx_int_t
 ngx_http_ssi_set(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
@@ -3462,7 +3432,6 @@ ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     return NGX_CONF_OK;
 }
-
 
 static ngx_int_t
 ngx_http_ssi_filter_init(ngx_conf_t *cf)
