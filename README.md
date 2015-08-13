@@ -7,4 +7,4 @@ There are two part in this server, one is page server, the other is fragment ser
 
 The fragment server is modified by concat module from alibaba(https://github.com/alibaba/nginx-http-concat).
 
-Only "include" command is supported.
+Only "include" command is supported. There may be some bugs, since coders are rookies, LOL~
