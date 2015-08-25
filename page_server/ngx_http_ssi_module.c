@@ -3,9 +3,12 @@
 #include <ngx_http.h>
 
 #define NGX_HTTP_SSI_ERROR          1
+
 #define NGX_HTTP_SSI_DATE_LEN       2048
+
 #define NGX_HTTP_SSI_ADD_PREFIX     1
 #define NGX_HTTP_SSI_ADD_ZERO       2
+
 
 typedef struct {
     ngx_flag_t    enable;
@@ -25,17 +28,20 @@ typedef struct {
 	ngx_str_t	  router_default;
 } ngx_http_ssi_loc_conf_t;
 
+
 typedef struct {
     ngx_str_t     name;
     ngx_uint_t    key;
     ngx_str_t     value;
 } ngx_http_ssi_var_t;
 
+
 typedef struct {
     ngx_str_t     name;
     ngx_chain_t  *bufs;
     ngx_uint_t    count;
 } ngx_http_ssi_block_t;
+
 
 typedef enum {
     ssi_start_state = 0,
@@ -59,6 +65,7 @@ typedef enum {
     ssi_error_end0_state,
     ssi_error_end1_state
 } ngx_http_ssi_state_e;
+
 
 static ngx_int_t ngx_http_ssi_output(ngx_http_request_t *r,
     ngx_http_ssi_ctx_t *ctx);
@@ -108,8 +115,6 @@ static char *ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf,
 static ngx_int_t ngx_http_ssi_filter_init(ngx_conf_t *cf);
 
 static inline ngx_int_t ngx_http_get_buf(u_char *buf, unsigned int len, ngx_chain_t **in, u_char **pos, ngx_log_t *log);
-
-static inline ngx_int_t ngx_http_get_buf_test(u_char *buf, unsigned int len, u_char **pos, ngx_log_t *log);
 
 static inline ngx_int_t ngx_http_get_buf_infile(u_char *buf, unsigned int len, ngx_chain_t *in);
 
@@ -192,6 +197,8 @@ static ngx_command_t  ngx_http_ssi_filter_commands[] = {
       ngx_null_command
 };
 
+
+
 static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
     ngx_http_ssi_preconfiguration,         /* preconfiguration */
     ngx_http_ssi_filter_init,              /* postconfiguration */
@@ -205,6 +212,7 @@ static ngx_http_module_t  ngx_http_ssi_filter_module_ctx = {
     ngx_http_ssi_create_loc_conf,          /* create location configuration */
     ngx_http_ssi_merge_loc_conf            /* merge location configuration */
 };
+
 
 ngx_module_t  ngx_http_ssi_filter_module = {
     NGX_MODULE_V1,
@@ -221,14 +229,17 @@ ngx_module_t  ngx_http_ssi_filter_module = {
     NGX_MODULE_V1_PADDING
 };
 
+
 static ngx_http_output_header_filter_pt  ngx_http_next_header_filter;
 static ngx_http_output_body_filter_pt    ngx_http_next_body_filter;
+
 
 static u_char ngx_http_ssi_string[] = "<!--";
 
 static ngx_str_t ngx_http_ssi_none = ngx_string("(none)");
 static ngx_str_t ngx_http_ssi_timefmt = ngx_string("%A, %d-%b-%Y %H:%M:%S %Z");
 static ngx_str_t ngx_http_ssi_null_string = ngx_null_string;
+
 
 #define  NGX_HTTP_SSI_INCLUDE_VIRTUAL  0
 #define  NGX_HTTP_SSI_INCLUDE_FILE     1
@@ -250,6 +261,7 @@ static ngx_str_t ngx_http_ssi_null_string = ngx_null_string;
 
 #define  NGX_HTTP_SSI_BLOCK_NAME       0
 
+
 static ngx_http_ssi_param_t  ngx_http_ssi_include_params[] = {
     { ngx_string("virtual"), NGX_HTTP_SSI_INCLUDE_VIRTUAL, 0, 0 },
     { ngx_string("file"), NGX_HTTP_SSI_INCLUDE_FILE, 0, 0 },
@@ -259,6 +271,7 @@ static ngx_http_ssi_param_t  ngx_http_ssi_include_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
 
+
 static ngx_http_ssi_param_t  ngx_http_ssi_echo_params[] = {
     { ngx_string("var"), NGX_HTTP_SSI_ECHO_VAR, 1, 0 },
     { ngx_string("default"), NGX_HTTP_SSI_ECHO_DEFAULT, 0, 0 },
@@ -266,17 +279,20 @@ static ngx_http_ssi_param_t  ngx_http_ssi_echo_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
 
+
 static ngx_http_ssi_param_t  ngx_http_ssi_config_params[] = {
     { ngx_string("errmsg"), NGX_HTTP_SSI_CONFIG_ERRMSG, 0, 0 },
     { ngx_string("timefmt"), NGX_HTTP_SSI_CONFIG_TIMEFMT, 0, 0 },
     { ngx_null_string, 0, 0, 0 }
 };
 
+
 static ngx_http_ssi_param_t  ngx_http_ssi_set_params[] = {
     { ngx_string("var"), NGX_HTTP_SSI_SET_VAR, 1, 0 },
     { ngx_string("value"), NGX_HTTP_SSI_SET_VALUE, 1, 0 },
     { ngx_null_string, 0, 0, 0 }
 };
+
 
 static ngx_http_ssi_param_t  ngx_http_ssi_if_params[] = {
     { ngx_string("expr"), NGX_HTTP_SSI_IF_EXPR, 1, 0 },
@@ -289,9 +305,11 @@ static ngx_http_ssi_param_t  ngx_http_ssi_block_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
 
+
 static ngx_http_ssi_param_t  ngx_http_ssi_no_params[] = {
     { ngx_null_string, 0, 0, 0 }
 };
+
 
 static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
     { ngx_string("include"), ngx_http_ssi_include,
@@ -317,6 +335,7 @@ static ngx_http_ssi_command_t  ngx_http_ssi_commands[] = {
 
     { ngx_null_string, NULL, NULL, 0, 0, 0 }
 };
+
 
 static ngx_http_variable_t  ngx_http_ssi_vars[] = {
 
@@ -547,17 +566,6 @@ ngx_http_get_buf(u_char *buf, unsigned int len, ngx_chain_t **in, u_char **pos, 
     return NGX_OK;
 }
 
-static inline ngx_int_t
-ngx_http_get_buf_test(u_char *buf, unsigned int len, u_char **pos, ngx_log_t *log)
-{
-	u_char *rpos = *pos;
-	
-	memcpy(buf, rpos, len);
-	*pos = rpos + len;
-    return NGX_OK;
-}
-
-
 static ngx_int_t 
 subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 {
@@ -573,6 +581,9 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 	
 	ngx_http_ssi_ctx_t *mctx = ngx_http_get_module_ctx(r->main, ngx_http_ssi_filter_module);
 	ngx_request_chain_t *kv_temp = (ngx_request_chain_t *)(mctx->ssi_content_map->elts);
+
+	//printf("In subrequest_handler count = %u\n", r->main->count);
+
 	for(loop = 0; loop < mctx->ssi_content_map->nelts; ++loop)
 	{
 		if(kv_temp[loop].key == r)
@@ -670,16 +681,6 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 		
 	}
 
-	/*ngx_chain_t *chain_temp_last_buf = mctx->ssi_content;
-	while(chain_temp_last_buf->next->next)
-	{
-		chain_temp_last_buf = chain_temp_last_buf->next;
-	}
-	chain_temp_last_buf->next = NULL;
-	chain_temp_last_buf->buf->last_buf = 1;
-	chain_temp_last_buf->buf->last_in_chain = 1;*/
-
-	
 	ngx_chain_t *chain_out = NULL;
 	while(mctx->ssi_content)
 	{
@@ -700,11 +701,23 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 		}
 		mctx->ssi_content = mctx->ssi_content->next;
 	}
+	r->postponed = NULL;
 	if(chain_out)
 	{
-		r->postponed = NULL;
-		rc = ngx_http_next_body_filter(r->main, chain_out);
+		ngx_http_postponed_request_t *postponed_temp = (ngx_http_postponed_request_t *)ngx_pcalloc(r->pool, sizeof(ngx_http_postponed_request_t));
+		if(postponed_temp == NULL)
+		{
+			return NGX_ERROR;
+		}
+		postponed_temp->request = NULL;
+		postponed_temp->out = chain_out;
+		postponed_temp->next = r->main->postponed;
+		r->main->postponed = postponed_temp;
+		rc = ngx_http_next_body_filter(r->main, NULL);
+		r->connection->data = r;
 	}
+	
+	
 
 	return NGX_OK;
 }
@@ -726,6 +739,13 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     ngx_http_ssi_main_conf_t  *smcf;
     ngx_str_t                 *params[NGX_HTTP_SSI_MAX_PARAMS + 1];
 
+	//write(STDOUT_FILENO, r->uri.data, r->uri.len);
+	//write(STDOUT_FILENO, "\n", 1);
+	
+	//printf("In ngx_http_ssi_body_filter count = %u\n", r->main->count);
+	//write(STDOUT_FILENO, r->uri.data, r->uri.len);
+	//write(STDOUT_FILENO, "\n", 1);
+	
     ctx = ngx_http_get_module_ctx(r, ngx_http_ssi_filter_module);
 	mctx = ngx_http_get_module_ctx(r->main, ngx_http_ssi_filter_module);
 
@@ -741,7 +761,11 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 			if(slcf_pr->optimize)
 			{
 				r->connection->data = r->main;
-				return ngx_http_next_body_filter(r, in);
+				if(in->buf->pos < in->buf->last)
+				{
+					return ngx_http_next_body_filter(r, in);
+				}
+				return NGX_OK;
 			}
 			else
 			{
@@ -1256,21 +1280,21 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 	ngx_uint_t flags = 0;
 	flags |= NGX_HTTP_LOG_UNSAFE;
 
-	for(i = 0; i < ctx->ssi_server_sum; ++i)
+	for(i = 0; i < mctx->ssi_server_sum; ++i)
 	{
-		if(0 == ctx->ssi_map[i]->value.len)
+		if(0 == mctx->ssi_map[i]->value.len)
 		{
 			continue;
 		}
 
-		new_args.data = ngx_pcalloc(r->pool, ctx->ssi_map[i]->value.len + 1);
+		new_args.data = ngx_pcalloc(r->pool, mctx->ssi_map[i]->value.len + 1);
 		if (new_args.data == NULL)
 		{
 			return NGX_ERROR;
 		}
 		memcpy(new_args.data, "?", 1);
-		memcpy(new_args.data + 1, ctx->ssi_map[i]->value.data, ctx->ssi_map[i]->value.len);
-		new_args.len = ctx->ssi_map[i]->value.len + 1;
+		memcpy(new_args.data + 1, mctx->ssi_map[i]->value.data, mctx->ssi_map[i]->value.len);
+		new_args.len = mctx->ssi_map[i]->value.len + 1;
 
 		ngx_http_post_subrequest_t *psr = ngx_palloc(r->pool, sizeof(ngx_http_post_subrequest_t));
 		if(psr == NULL) {
@@ -1279,28 +1303,26 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 		psr->handler = subrequest_handler;
 		psr->data = NULL;
 
-		if (ngx_http_subrequest(r, &ctx->ssi_map[i]->key, &new_args, &sr, psr, flags) != NGX_OK)
+		if (ngx_http_subrequest(r, &mctx->ssi_map[i]->key, &new_args, &sr, psr, flags) != NGX_OK)
 		{
    			return NGX_HTTP_SSI_ERROR;
 		}
-		ctx->ssi_sub_count++;
-		ctx->ssi_map[i]->value.data = NULL;
-		ctx->ssi_map[i]->value.len = 0;
+		mctx->ssi_sub_count++;
+		mctx->ssi_map[i]->value.data = NULL;
+		mctx->ssi_map[i]->value.len = 0;
 
-		ngx_request_chain_t *kv_temp = ngx_array_push(ctx->ssi_content_map);
+		ngx_request_chain_t *kv_temp = ngx_array_push(mctx->ssi_content_map);
 		kv_temp->key = sr;
-		kv_temp->value = ctx->ssi_content_map_temp[i]->value;
+		kv_temp->value = mctx->ssi_content_map_temp[i]->value;
 	}
 	//=============================================================================
-
     return ret;
 }
-
 
 static ngx_int_t
 ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 {
-    ngx_int_t     rc;
+    ngx_int_t     rc = NGX_OK;
     ngx_buf_t    *b;
     ngx_chain_t  *cl;
 
@@ -1325,11 +1347,14 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
 	if(mctx->ssi_found && slcf->optimize)
 	{
-		if (ngx_chain_add_copy(r->pool, &mctx->ssi_content, ctx->out) != NGX_OK) 
+		if(ctx->out)
 		{
-        	return NGX_ERROR;
-    	}
-		ngx_chain_t *chain_out = NULL;
+			if (ngx_chain_add_copy(r->pool, &mctx->ssi_content, ctx->out) != NGX_OK) 
+			{
+	        	return NGX_ERROR;
+	    	}
+		}
+		/*ngx_chain_t *chain_out = NULL;
 		while(mctx->ssi_content)
 		{
 			ngx_chain_t *chain_temp = (ngx_chain_t *)ngx_pcalloc(r->pool, sizeof(ngx_chain_t));
@@ -1349,7 +1374,8 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 			}
 			mctx->ssi_content = mctx->ssi_content->next;
 		}
-		rc = ngx_http_next_body_filter(r->main, chain_out);	
+		rc = ngx_http_next_body_filter(r->main, chain_out);	*/
+
 	}
 	else
 	{
@@ -1974,6 +2000,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 }
 
 
+
 static ngx_str_t *
 ngx_http_ssi_get_variable(ngx_http_request_t *r, ngx_str_t *name,
     ngx_uint_t key)
@@ -2405,6 +2432,7 @@ ngx_http_ssi_regex_match(ngx_http_request_t *r, ngx_str_t *pattern,
 #endif
 }
 
+
 static ngx_int_t
 ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_str_t **params)
@@ -2414,7 +2442,7 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
     ngx_buf_t                   *b;
     ngx_uint_t                   flags, i;
     ngx_chain_t                 *cl, *tl, **ll, *out;
-    //ngx_http_request_t          *sr;
+    ngx_http_request_t          *sr;
     ngx_http_ssi_var_t          *var;
     ngx_http_ssi_ctx_t          *mctx;
     ngx_http_ssi_block_t        *bl;
@@ -2598,111 +2626,117 @@ ngx_http_ssi_include(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
         flags |= NGX_HTTP_SUBREQUEST_IN_MEMORY|NGX_HTTP_SUBREQUEST_WAITED;
     }
-	//=================================================================
-	//ssi相关的其他include指令可能支持的不好
-	int loop;
-	unsigned fragment_in_default = 1;
-	u_char *buf_4_subrequest = (u_char *)ngx_pcalloc(r->main->pool, 16384 * sizeof(u_char));
-	if(buf_4_subrequest == NULL)
-	{
-		return NGX_ERROR;
-	}
-
-	ngx_chain_t *in = (ngx_chain_t *)ngx_pcalloc(r->main->pool, sizeof(ngx_chain_t));
-	if(in == NULL)
-	{
-		return NGX_ERROR;
-	}
-	in->buf = (ngx_buf_t *)ngx_pcalloc(r->main->pool, sizeof(ngx_buf_t));
-	if(in->buf == NULL)
-	{
-		return NGX_ERROR;
-	}
-	in->buf->pos = 0;
-	in->buf->last = 0;
-	in->buf->in_file = 0;
-	in->buf->memory = 1;	
-	in->next = NULL;
 	
-	//在ssi_content中留个位置
-	if (ngx_chain_add_copy(r->main->pool, &ctx->ssi_content, in) != NGX_OK) 
+	ngx_http_ssi_loc_conf_t *slcf_main = ngx_http_get_module_loc_conf(r->main, ngx_http_ssi_filter_module);
+	//=================================================================
+	if(slcf_main->optimize)
 	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_chain_add_copy error at %s:%d\n", __FILE__, __LINE__);
-		return NGX_ERROR;
-	}
-
-	for(loop = 0; loop < ctx->ssi_server_nodefault_sum; ++loop)
-	{
-		if(0 == memcmp(ctx->ssi_map[loop]->key.data, uri->data, ctx->ssi_map[loop]->key.len))
+		int loop;
+		unsigned fragment_in_default = 1;
+		u_char *buf_4_subrequest = (u_char *)ngx_pcalloc(r->main->pool, 16384 * sizeof(u_char));
+		if(buf_4_subrequest == NULL)
 		{
-			//已经找到碎片所在的机器
-			if(ctx->ssi_map[loop]->value.len == 0)
+			return NGX_ERROR;
+		}
+	
+		ngx_chain_t *in = (ngx_chain_t *)ngx_pcalloc(r->main->pool, sizeof(ngx_chain_t));
+		if(in == NULL)
+		{
+			return NGX_ERROR;
+		}
+		in->buf = (ngx_buf_t *)ngx_pcalloc(r->main->pool, sizeof(ngx_buf_t));
+		if(in->buf == NULL)
+		{
+			return NGX_ERROR;
+		}
+		in->buf->pos = 0;
+		in->buf->last = 0;
+		in->buf->in_file = 0;
+		in->buf->memory = 1;	
+		in->next = NULL;
+			
+		//在ssi_content中留个位置
+		if (ngx_chain_add_copy(r->main->pool, &ctx->ssi_content, in) != NGX_OK) 
+		{
+			ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, "ngx_chain_add_copy error at %s:%d\n", __FILE__, __LINE__);
+			return NGX_ERROR;
+		}
+	
+		for(loop = 0; loop < ctx->ssi_server_nodefault_sum; ++loop)
+		{
+			if(0 == memcmp(ctx->ssi_map[loop]->key.data, uri->data, ctx->ssi_map[loop]->key.len))
+			{
+				//已经找到碎片所在的机器
+				if(ctx->ssi_map[loop]->value.len == 0)
+				{
+					memcpy(buf_4_subrequest, uri->data, uri->len);
+					ctx->ssi_map[loop]->value.data = buf_4_subrequest;
+					ctx->ssi_map[loop]->value.len = uri->len;
+				}
+				else
+				{
+					memcpy(buf_4_subrequest, ctx->ssi_map[loop]->value.data, ctx->ssi_map[loop]->value.len);
+					memcpy(buf_4_subrequest + ctx->ssi_map[loop]->value.len, ",", 1);
+					memcpy(buf_4_subrequest + ctx->ssi_map[loop]->value.len + 1, uri->data, uri->len);
+					ctx->ssi_map[loop]->value.data = buf_4_subrequest;
+					ctx->ssi_map[loop]->value.len = ctx->ssi_map[loop]->value.len + uri->len + 1;
+				}
+				fragment_in_default = 0;
+				ctx->ssi_content_map_temp[loop]->value[ctx->ssi_content_map_temp[loop]->count++] = in;
+				break;
+			}
+		}
+			
+		if(fragment_in_default && ((ctx->ssi_server_sum - ctx->ssi_server_nodefault_sum) != 1))
+		{
+			ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, 
+				"fragment(%s) mismatched ssi_router_keys, and ssi_router_default is not found at %s:%d\n", 
+				 uri->data, __FILE__, __LINE__);
+			return NGX_ERROR;
+		}
+		else if(fragment_in_default && ((ctx->ssi_server_sum - ctx->ssi_server_nodefault_sum) == 1))
+		{
+			if(ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len == 0)
 			{
 				memcpy(buf_4_subrequest, uri->data, uri->len);
-				ctx->ssi_map[loop]->value.data = buf_4_subrequest;
-				ctx->ssi_map[loop]->value.len = uri->len;
+				ctx->ssi_map[ctx->ssi_server_sum - 1]->value.data = buf_4_subrequest;
+				ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len = uri->len;
 			}
 			else
 			{
-				memcpy(buf_4_subrequest, ctx->ssi_map[loop]->value.data, ctx->ssi_map[loop]->value.len);
-				memcpy(buf_4_subrequest + ctx->ssi_map[loop]->value.len, ",", 1);
-				memcpy(buf_4_subrequest + ctx->ssi_map[loop]->value.len + 1, uri->data, uri->len);
-				ctx->ssi_map[loop]->value.data = buf_4_subrequest;
-				ctx->ssi_map[loop]->value.len = ctx->ssi_map[loop]->value.len + uri->len + 1;
+				memcpy(buf_4_subrequest, ctx->ssi_map[ctx->ssi_server_sum - 1]->value.data, ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len);
+				memcpy(buf_4_subrequest + ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len, ",", 1);
+				memcpy(buf_4_subrequest + ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len + 1, uri->data, uri->len);
+				ctx->ssi_map[ctx->ssi_server_sum - 1]->value.data = buf_4_subrequest;
+				ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len = ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len + uri->len + 1;
 			}
-			fragment_in_default = 0;
 			ctx->ssi_content_map_temp[loop]->value[ctx->ssi_content_map_temp[loop]->count++] = in;
-			break;
 		}
+
 	}
+	else
+	{
+		if (ngx_http_subrequest(r, uri, &args, &sr, psr, flags) != NGX_OK) {
+			return NGX_HTTP_SSI_ERROR;
+		}
 	
-	if(fragment_in_default && ((ctx->ssi_server_sum - ctx->ssi_server_nodefault_sum) != 1))
-	{
-		ngx_log_error(NGX_LOG_ERR, r->connection->log, 0, 
-			"fragment(%s) mismatched ssi_router_keys, and ssi_router_default is not found at %s:%d\n", 
-			 uri->data, __FILE__, __LINE__);
-		return NGX_ERROR;
-	}
-	else if(fragment_in_default && ((ctx->ssi_server_sum - ctx->ssi_server_nodefault_sum) == 1))
-	{
-		if(ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len == 0)
-		{
-			memcpy(buf_4_subrequest, uri->data, uri->len);
-			ctx->ssi_map[ctx->ssi_server_sum - 1]->value.data = buf_4_subrequest;
-			ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len = uri->len;
+		if (wait == NULL && set == NULL) {
+			return NGX_OK;
 		}
-		else
-		{
-			memcpy(buf_4_subrequest, ctx->ssi_map[ctx->ssi_server_sum - 1]->value.data, ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len);
-			memcpy(buf_4_subrequest + ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len, ",", 1);
-			memcpy(buf_4_subrequest + ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len + 1, uri->data, uri->len);
-			ctx->ssi_map[ctx->ssi_server_sum - 1]->value.data = buf_4_subrequest;
-			ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len = ctx->ssi_map[ctx->ssi_server_sum - 1]->value.len + uri->len + 1;
+	
+		if (ctx->wait == NULL) {
+			ctx->wait = sr;
+	
+			return NGX_AGAIN;
+	
+		} else {
+			ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+						  "can only wait for one subrequest at a time");
 		}
-		ctx->ssi_content_map_temp[loop]->value[ctx->ssi_content_map_temp[loop]->count++] = in;
+
 	}
 
 	//=================================================================
-
-	/*ngx_http_request_t			*sr;
-    if (ngx_http_subrequest(r, uri, &args, &sr, psr, flags) != NGX_OK) {
-        return NGX_HTTP_SSI_ERROR;
-    }
-
-    if (wait == NULL && set == NULL) {
-        return NGX_OK;
-    }
-
-    if (ctx->wait == NULL) {
-        ctx->wait = sr;
-
-        return NGX_AGAIN;
-
-    } else {
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "can only wait for one subrequest at a time");
-    }*/
-
     return NGX_OK;
 }
 
@@ -2911,6 +2945,7 @@ ngx_http_ssi_config(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
 
     return NGX_OK;
 }
+
 
 static ngx_int_t
 ngx_http_ssi_set(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
@@ -3426,10 +3461,11 @@ ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
 	ngx_conf_merge_ptr_value(conf->router_keys, prev->router_keys, NULL);
 	ngx_conf_merge_str_value(conf->router_default, prev->router_default, "");
-	ngx_conf_merge_value(conf->enable, prev->enable, 0);
+	ngx_conf_merge_value(conf->optimize, prev->optimize, 0);
 
     return NGX_CONF_OK;
 }
+
 
 static ngx_int_t
 ngx_http_ssi_filter_init(ngx_conf_t *cf)
