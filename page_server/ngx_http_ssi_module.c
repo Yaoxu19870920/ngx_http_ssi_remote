@@ -582,8 +582,6 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 	ngx_http_ssi_ctx_t *mctx = ngx_http_get_module_ctx(r->main, ngx_http_ssi_filter_module);
 	ngx_request_chain_t *kv_temp = (ngx_request_chain_t *)(mctx->ssi_content_map->elts);
 
-	//printf("In subrequest_handler count = %u\n", r->main->count);
-
 	for(loop = 0; loop < mctx->ssi_content_map->nelts; ++loop)
 	{
 		if(kv_temp[loop].key == r)
@@ -619,14 +617,19 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 			}
 			file_2_memory->buf->pos = buf;
 			file_2_memory->buf->last = buf + file_2_memory->buf->file_last;
+			file_2_memory->buf->in_file = 0;
+			file_2_memory->buf->temporary= 1;
 		}
 		file_2_memory = file_2_memory->next;
 	}
 	u_char *cur_pos = r->postponed->out->buf->pos;
 
-	while((cur_pos != r->postponed->out->buf->last) || 
+	//int count1 = 0;
+	
+	while((cur_pos < r->postponed->out->buf->last) || 
 		(r->postponed->out->next && (r->postponed->out->next->buf->pos < r->postponed->out->next->buf->last)))
 	{
+		//printf("count1 = %d\n", count1++);
 		//获取文件长度
 		ret = ngx_http_get_buf(len_buf, 4, &r->postponed->out, &cur_pos, r->connection->log);
 		if(NGX_ERROR == ret)
@@ -681,6 +684,19 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 		
 	}
 
+
+
+	ngx_chain_t *chain_shit = mctx->ssi_content;
+	while(chain_shit)
+	{
+		write(STDOUT_FILENO, chain_shit->buf->pos, (chain_shit->buf->last - chain_shit->buf->pos));
+		chain_shit = chain_shit->next;
+	}
+
+
+
+	
+
 	ngx_chain_t *chain_out = NULL;
 	while(mctx->ssi_content)
 	{
@@ -695,6 +711,7 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 		{
 			break;
 		}
+
 		if(ngx_chain_add_copy(r->pool, &chain_out, chain_temp) != NGX_OK)
 		{
 			return NGX_ERROR;
@@ -702,8 +719,17 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 		mctx->ssi_content = mctx->ssi_content->next;
 	}
 	r->postponed = NULL;
+
+	//printf("in handler\n");
 	if(chain_out)
 	{
+		/*ngx_chain_t *chain_shit = chain_out;
+		while(chain_shit)
+		{
+			write(STDOUT_FILENO, chain_shit->buf->pos, (chain_shit->buf->last - chain_shit->buf->pos));
+			chain_shit = chain_shit->next;
+		}*/
+		
 		ngx_http_postponed_request_t *postponed_temp = (ngx_http_postponed_request_t *)ngx_pcalloc(r->pool, sizeof(ngx_http_postponed_request_t));
 		if(postponed_temp == NULL)
 		{
@@ -714,11 +740,14 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 		postponed_temp->next = r->main->postponed;
 		r->main->postponed = postponed_temp;
 		rc = ngx_http_next_body_filter(r->main, NULL);
-		r->connection->data = r;
+	}
+
+	if(r->main->count == 2)
+	{
+		mctx->ssi_found	= 0;
 	}
 	
-	
-
+	r->connection->data = r;
 	return NGX_OK;
 }
 
@@ -761,7 +790,8 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 			if(slcf_pr->optimize)
 			{
 				r->connection->data = r->main;
-				if(in->buf->pos < in->buf->last)
+				if(((!in->buf->in_file) && (in->buf->pos < in->buf->last)) || 
+					((in->buf->in_file) && (in->buf->file_pos < in->buf->file_last)))
 				{
 					return ngx_http_next_body_filter(r, in);
 				}
@@ -961,7 +991,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
                         bl = mctx->blocks->elts;
                         for (ll = &bl[mctx->blocks->nelts - 1].bufs;
                              *ll;
-                             ll = &(*ll)->next)
+                                                          ll = &(*ll)->next)
                         {
                             /* void */
                         }
@@ -1303,6 +1333,9 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 		psr->handler = subrequest_handler;
 		psr->data = NULL;
 
+		//write(STDOUT_FILENO, mctx->ssi_map[i]->key.data, mctx->ssi_map[i]->key.len);
+		//write(STDOUT_FILENO, "\n", 1);
+
 		if (ngx_http_subrequest(r, &mctx->ssi_map[i]->key, &new_args, &sr, psr, flags) != NGX_OK)
 		{
    			return NGX_HTTP_SSI_ERROR;
@@ -1318,6 +1351,7 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
 	//=============================================================================
     return ret;
 }
+
 
 static ngx_int_t
 ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
@@ -1346,7 +1380,7 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
 
 	if(mctx->ssi_found && slcf->optimize)
-	{
+	{		
 		if(ctx->out)
 		{
 			if (ngx_chain_add_copy(r->pool, &mctx->ssi_content, ctx->out) != NGX_OK) 
@@ -1354,34 +1388,11 @@ ngx_http_ssi_output(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 	        	return NGX_ERROR;
 	    	}
 		}
-		/*ngx_chain_t *chain_out = NULL;
-		while(mctx->ssi_content)
-		{
-			ngx_chain_t *chain_temp = (ngx_chain_t *)ngx_pcalloc(r->pool, sizeof(ngx_chain_t));
-			if(chain_temp == NULL)
-			{
-				return NGX_ERROR;
-			}
-			chain_temp->buf = mctx->ssi_content->buf;
-			chain_temp->next = NULL;
-			if(chain_temp->buf->pos == chain_temp->buf->last)
-			{
-				break;
-			}
-			if(ngx_chain_add_copy(r->pool, &chain_out, chain_temp) != NGX_OK)
-			{
-				return NGX_ERROR;
-			}
-			mctx->ssi_content = mctx->ssi_content->next;
-		}
-		rc = ngx_http_next_body_filter(r->main, chain_out);	*/
-
 	}
 	else
 	{
 		rc = ngx_http_next_body_filter(r, ctx->out);
 	}
-
 
     if (ctx->busy == NULL) {
         ctx->busy = ctx->out;
@@ -1508,6 +1519,7 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
                 copy_end = p;
                 looked = 0;
                 state = ssi_start_state;
+
                 break;
             }
 
@@ -1998,7 +2010,6 @@ ngx_http_ssi_parse(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx)
 
     return NGX_AGAIN;
 }
-
 
 
 static ngx_str_t *
@@ -2869,6 +2880,7 @@ ngx_http_ssi_echo(ngx_http_request_t *r, ngx_http_ssi_ctx_t *ctx,
             if (p == NULL) {
                 return NGX_HTTP_SSI_ERROR;
             }
+
 
             (void) ngx_escape_uri(p, value->data, value->len, NGX_ESCAPE_HTML);
         }
