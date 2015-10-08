@@ -1,4 +1,4 @@
-# ngx_ssi_remote
+# ngx_http_ssi_module
 Page files and fragments are stored on different servers.
 
 In traditional nginx, a subrequest is generated for each fragment, page files and fragments are stored on the same server. With this module, page files and fragments are stored on different servers, and several fragments are fetched in one subrequest.
