@@ -683,20 +683,7 @@ subrequest_handler(ngx_http_request_t *r, void *data, ngx_int_t rc)
 		fragment_in_sub[count++]->buf->in_file = 0;
 		
 	}
-
-
-
-	ngx_chain_t *chain_shit = mctx->ssi_content;
-	while(chain_shit)
-	{
-		write(STDOUT_FILENO, chain_shit->buf->pos, (chain_shit->buf->last - chain_shit->buf->pos));
-		chain_shit = chain_shit->next;
-	}
-
-
-
 	
-
 	ngx_chain_t *chain_out = NULL;
 	while(mctx->ssi_content)
 	{
